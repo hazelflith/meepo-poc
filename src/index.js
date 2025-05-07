@@ -100,12 +100,8 @@ app.post('/api/generate-image', async (req, res) => {
       return `data:image/png;base64,${item.b64_json}`;
     });
 
-    // Save images and get file paths
-    const savedFiles = await Promise.all(
-      images.map((base64Image, index) => saveBase64Image(base64Image, index))
-    );
-
-    res.json({ images, savedFiles });
+    // Return only the base64 images without saving to disk
+    res.json({ images });
   } catch (error) {
     console.error('Error in image generation:', error);
     res.status(500).json({ 
