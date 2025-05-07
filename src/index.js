@@ -73,7 +73,7 @@ app.post('/api/chat', async (req, res) => {
 // Image generation endpoint
 app.post('/api/generate-image', async (req, res) => {
   try {
-    const { prompt, size = "1024x1024", n = 1, quality = "high", transparent = false } = req.body;
+    const { prompt, size = "1024x1024", n = 1, quality = "high", transparent = false, reference_images = [] } = req.body;
     
     // Validate quality parameter
     if (!["low", "medium", "high"].includes(quality)) {
@@ -82,12 +82,25 @@ app.post('/api/generate-image', async (req, res) => {
         details: "Quality must be one of: low, medium, high"
       });
     }
+
+    // Validate reference images if provided
+    if (reference_images.length > 0) {
+      for (const image of reference_images) {
+        if (!image.startsWith('data:image/')) {
+          return res.status(400).json({
+            error: "Invalid reference image",
+            details: "All reference images must be valid base64 encoded images"
+          });
+        }
+      }
+    }
     
     console.log('Generating image with prompt:', prompt);
     console.log('Size:', size);
     console.log('Number of images:', n);
     console.log('Quality:', quality);
     console.log('Transparent:', transparent);
+    console.log('Number of reference images:', reference_images.length);
 
     const response = await openai.images.generate({
       model: "gpt-image-1",
@@ -95,7 +108,8 @@ app.post('/api/generate-image', async (req, res) => {
       n: n,
       size: size,
       quality: quality,
-      ...(transparent && { background: "transparent" })
+      ...(transparent && { background: "transparent" }),
+      ...(reference_images.length > 0 && { images: reference_images })
     });
 
     console.log('OpenAI Response:', JSON.stringify(response, null, 2));
