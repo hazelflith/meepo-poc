@@ -91,6 +91,15 @@ app.post('/api/generate-image', async (req, res) => {
       });
     }
 
+    // Validate size parameter
+    const validSizes = ["1024x1024", "1536x1024", "1024x1536"];
+    if (!validSizes.includes(size)) {
+      return res.status(400).json({
+        error: "Invalid size parameter",
+        details: "Size must be one of: 1024x1024 (square), 1536x1024 (landscape), 1024x1536 (portrait)"
+      });
+    }
+
     // Validate quality parameter
     if (!["low", "medium", "high"].includes(quality)) {
       return res.status(400).json({
