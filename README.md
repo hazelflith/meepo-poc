@@ -1,28 +1,79 @@
-# OpenAI LLM Integration Service
+# AI Image Generator
 
-This is a Node.js service that provides an API for integrating with OpenAI's LLM models.
+A full-stack application for generating images using OpenAI's GPT Image model.
 
-## Setup
+## Project Structure
+
+- `src/` - Node.js backend service
+- `frontend/` - Streamlit frontend application
+
+## Backend Deployment (Vercel)
+
+1. Install Vercel CLI:
+```bash
+npm install -g vercel
+```
+
+2. Deploy to Vercel:
+```bash
+vercel
+```
+
+3. Set environment variables in Vercel:
+- `OPENAI_API_KEY`: Your OpenAI API key
+
+## Frontend Deployment (Streamlit Cloud)
+
+1. Create a new repository for the frontend code
+2. Push the `frontend/` directory to the new repository
+3. Go to [Streamlit Cloud](https://streamlit.io/cloud)
+4. Create a new app and connect it to your repository
+5. Set environment variables:
+- `API_URL`: Your Vercel deployment URL (e.g., https://your-app.vercel.app)
+
+## Local Development
+
+### Backend
 
 1. Install dependencies:
 ```bash
 npm install
 ```
 
-2. Create a `.env` file in the root directory with the following content:
+2. Create a `.env` file:
 ```
 OPENAI_API_KEY=your_api_key_here
-PORT=3000
 ```
 
 3. Start the server:
 ```bash
-# Development mode with auto-reload
 npm run dev
-
-# Production mode
-npm start
 ```
+
+### Frontend
+
+1. Navigate to the frontend directory:
+```bash
+cd frontend
+```
+
+2. Install dependencies:
+```bash
+pip install -r requirements.txt
+```
+
+3. Start the Streamlit app:
+```bash
+streamlit run app.py
+```
+
+## Environment Variables
+
+### Backend
+- `OPENAI_API_KEY`: Your OpenAI API key
+
+### Frontend
+- `API_URL`: URL of the backend service (default: http://localhost:3000)
 
 ## API Endpoints
 

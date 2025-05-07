@@ -6,13 +6,13 @@ const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
 
-const app = express();
-const port = process.env.PORT || 3000;
-
 // Initialize OpenAI client
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 });
+
+// Create Express app
+const app = express();
 
 // Middleware
 app.use(cors());
@@ -23,119 +23,46 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 
-// Chat completion endpoint
-app.post('/api/chat', async (req, res) => {
+// Helper function to save base64 image
+async function saveBase64Image(base64String, index) {
   try {
-    const { messages } = req.body;
-
-    if (!messages || !Array.isArray(messages)) {
-      return res.status(400).json({ error: 'Messages array is required' });
-    }
-
-    const completion = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
-      messages: messages,
-      temperature: 0.7,
-      max_tokens: 1000
-    });
-
-    res.json(completion.choices[0].message);
-  } catch (error) {
-    console.error('Error:', error);
-    res.status(500).json({ error: 'Failed to process request' });
-  }
-});
-
-// Helper function to save base64 image to file
-function saveBase64Image(base64String, filename) {
-  try {
-    // Remove the data URL prefix if present
-    const base64Data = base64String.replace(/^data:image\/\w+;base64,/, '');
-    const imageBuffer = Buffer.from(base64Data, 'base64');
-    
     // Create images directory if it doesn't exist
     const imagesDir = path.join(__dirname, 'images');
     if (!fs.existsSync(imagesDir)) {
-      fs.mkdirSync(imagesDir);
+      fs.mkdirSync(imagesDir, { recursive: true });
     }
 
-    // Save the image
-    const filePath = path.join(imagesDir, filename);
-    fs.writeFileSync(filePath, imageBuffer);
-    console.log(`Image saved to: ${filePath}`);
-    return filePath;
+    // Generate filename with timestamp
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const filename = `image_${timestamp}_${index}.png`;
+    const filepath = path.join(imagesDir, filename);
+
+    // Convert base64 to buffer and save
+    const imageBuffer = Buffer.from(base64String.split(',')[1], 'base64');
+    fs.writeFileSync(filepath, imageBuffer);
+
+    return filepath;
   } catch (error) {
     console.error('Error saving image:', error);
     throw error;
   }
 }
 
-// Image generation endpoint
-app.post('/api/generate-image', async (req, res) => {
+// Chat completion endpoint
+app.post('/api/chat', async (req, res) => {
   try {
-    const { prompt, n = 1, size = '1024x1024' } = req.body;
-
-    if (!prompt) {
-      return res.status(400).json({ error: 'Prompt is required' });
-    }
-
-    console.log('Generating image with prompt:', prompt);
-    console.log('Using model: gpt-image-1');
-
-    // Using the correct API format for gpt-image-1
-    const response = await openai.images.generate({
-      model: "gpt-image-1",
-      prompt: prompt,
-      n: n,
-      size: size,
-      quality: "high",
+    const { messages } = req.body;
+    
+    const completion = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: messages
     });
 
-    console.log('Raw OpenAI response:', JSON.stringify(response, null, 2));
-
-    if (!response.data) {
-      console.error('No data in response:', response);
-      throw new Error('No data in response from OpenAI');
-    }
-
-    if (!Array.isArray(response.data)) {
-      console.error('Response data is not an array:', response.data);
-      throw new Error('Invalid response format from OpenAI');
-    }
-
-    // Process and save each image
-    const savedImages = await Promise.all(response.data.map(async (image, index) => {
-      if (!image.b64_json) {
-        console.error('Image object missing base64 data:', image);
-        throw new Error('Base64 image data is missing in the response');
-      }
-
-      const base64String = `data:image/png;base64,${image.b64_json}`;
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-      const filename = `image_${timestamp}_${index + 1}.png`;
-      
-      const filePath = saveBase64Image(base64String, filename);
-      return {
-        base64: base64String,
-        filePath: filePath
-      };
-    }));
-
-    console.log('Successfully processed and saved images');
-    res.json({ 
-      images: savedImages.map(img => img.base64),
-      savedFiles: savedImages.map(img => img.filePath)
-    });
+    res.json(completion.choices[0].message);
   } catch (error) {
-    console.error('Detailed error:', {
-      message: error.message,
-      status: error.status,
-      type: error.type,
-      code: error.code,
-      response: error.response?.data
-    });
+    console.error('Error in chat completion:', error);
     res.status(500).json({ 
-      error: 'Failed to generate image',
+      error: "Failed to get chat completion",
       details: error.message,
       type: error.type,
       code: error.code
@@ -143,7 +70,61 @@ app.post('/api/generate-image', async (req, res) => {
   }
 });
 
-// Start server
-app.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
-}); 
+// Image generation endpoint
+app.post('/api/generate-image', async (req, res) => {
+  try {
+    const { prompt, size = "1024x1024", n = 1 } = req.body;
+    
+    console.log('Generating image with prompt:', prompt);
+    console.log('Size:', size);
+    console.log('Number of images:', n);
+
+    const response = await openai.images.generate({
+      model: "dall-e-3",
+      prompt: prompt,
+      n: n,
+      size: size,
+      quality: "high",
+      response_format: "b64_json"
+    });
+
+    console.log('OpenAI Response:', JSON.stringify(response, null, 2));
+
+    if (!response.data || response.data.length === 0) {
+      throw new Error('No image data in response');
+    }
+
+    const images = response.data.map(item => {
+      if (!item.b64_json) {
+        throw new Error('Missing b64_json in response data');
+      }
+      return `data:image/png;base64,${item.b64_json}`;
+    });
+
+    // Save images and get file paths
+    const savedFiles = await Promise.all(
+      images.map((base64Image, index) => saveBase64Image(base64Image, index))
+    );
+
+    res.json({ images, savedFiles });
+  } catch (error) {
+    console.error('Error in image generation:', error);
+    res.status(500).json({ 
+      error: "Failed to generate image",
+      details: error.message,
+      type: error.type,
+      code: error.code
+    });
+  }
+});
+
+// For local development
+if (process.env.NODE_ENV !== 'production') {
+  const PORT = process.env.PORT || 3000;
+  app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+  });
+}
+
+// Export the Express API
+module.exports = app; 
