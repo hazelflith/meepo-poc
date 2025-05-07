@@ -118,7 +118,7 @@ app.post('/api/generate-image', async (req, res) => {
         size: size,
         quality: quality,
         ...(transparent && { background: "transparent" }),
-        ...(reference_images.length > 0 && { images: reference_images })
+        ...(reference_images.length > 0 && { image: reference_images[0] })
       });
 
       console.log('OpenAI Response:', JSON.stringify(response, null, 2));
