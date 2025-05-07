@@ -12,11 +12,11 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 });
 
-// Helper function to convert base64 to file
+// Helper function to convert base64 to File object
 async function toFile(base64String) {
   const buffer = Buffer.from(base64String.split(',')[1], 'base64');
-  const stream = Readable.from(buffer);
-  return stream;
+  const blob = new Blob([buffer], { type: 'image/png' });
+  return new File([blob], 'image.png', { type: 'image/png' });
 }
 
 // Create Express app
@@ -121,18 +121,17 @@ app.post('/api/generate-image', async (req, res) => {
     try {
       let response;
       if (reference_images.length > 0) {
-        // Convert base64 images to file streams
+        // Convert base64 images to File objects
         const imageFiles = await Promise.all(
           reference_images.map(async (base64Image) => {
-            const stream = await toFile(base64Image);
-            return stream;
+            return await toFile(base64Image);
           })
         );
 
         // Use edit endpoint for reference images
         response = await openai.images.edit({
           model: "gpt-image-1",
-          image: imageFiles,
+          image: imageFiles[0], // Use only the first image for now
           prompt: prompt,
           n: n,
           size: size,
