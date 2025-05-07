@@ -5,7 +5,9 @@
       "src": "src/index.js",
       "use": "@vercel/node",
       "config": {
-        "nodeVersion": "18.x"
+        "nodeVersion": "18.x",
+        "maxDuration": 60,
+        "memory": 1024
       }
     }
   ],
@@ -14,11 +16,5 @@
       "src": "/(.*)",
       "dest": "src/index.js"
     }
-  ],
-  "functions": {
-    "src/index.js": {
-      "memory": 1024,
-      "maxDuration": 60
-    }
-  }
+  ]
 } 
