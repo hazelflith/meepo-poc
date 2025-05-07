@@ -5,11 +5,19 @@ const OpenAI = require('openai');
 const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
+const { Readable } = require('stream');
 
 // Initialize OpenAI client
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 });
+
+// Helper function to convert base64 to file
+async function toFile(base64String) {
+  const buffer = Buffer.from(base64String.split(',')[1], 'base64');
+  const stream = Readable.from(buffer);
+  return stream;
+}
 
 // Create Express app
 const app = express();
@@ -111,15 +119,37 @@ app.post('/api/generate-image', async (req, res) => {
     console.log('Number of reference images:', reference_images.length);
 
     try {
-      const response = await openai.images.generate({
-        model: "gpt-image-1",
-        prompt: prompt,
-        n: n,
-        size: size,
-        quality: quality,
-        ...(transparent && { background: "transparent" }),
-        ...(reference_images.length > 0 && { image: reference_images[0] })
-      });
+      let response;
+      if (reference_images.length > 0) {
+        // Convert base64 images to file streams
+        const imageFiles = await Promise.all(
+          reference_images.map(async (base64Image) => {
+            const stream = await toFile(base64Image);
+            return stream;
+          })
+        );
+
+        // Use edit endpoint for reference images
+        response = await openai.images.edit({
+          model: "gpt-image-1",
+          image: imageFiles,
+          prompt: prompt,
+          n: n,
+          size: size,
+          quality: quality,
+          ...(transparent && { background: "transparent" })
+        });
+      } else {
+        // Use generate endpoint for no reference images
+        response = await openai.images.generate({
+          model: "gpt-image-1",
+          prompt: prompt,
+          n: n,
+          size: size,
+          quality: quality,
+          ...(transparent && { background: "transparent" })
+        });
+      }
 
       console.log('OpenAI Response:', JSON.stringify(response, null, 2));
 
