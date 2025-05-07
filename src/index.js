@@ -80,12 +80,11 @@ app.post('/api/generate-image', async (req, res) => {
     console.log('Number of images:', n);
 
     const response = await openai.images.generate({
-      model: "dall-e-3",
+      model: "gpt-image-1",
       prompt: prompt,
       n: n,
       size: size,
-      quality: "hd",
-      response_format: "b64_json"
+      quality: "high",
     });
 
     console.log('OpenAI Response:', JSON.stringify(response, null, 2));
