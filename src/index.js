@@ -84,7 +84,7 @@ app.post('/api/generate-image', async (req, res) => {
       prompt: prompt,
       n: n,
       size: size,
-      quality: "high",
+      quality: "hd",
       response_format: "b64_json"
     });
 
