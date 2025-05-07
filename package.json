@@ -5,7 +5,8 @@
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
-    "dev": "nodemon src/index.js"
+    "dev": "nodemon src/index.js",
+    "build": "echo 'Build step completed'"
   },
   "dependencies": {
     "axios": "^1.9.0",
@@ -16,5 +17,8 @@
   },
   "devDependencies": {
     "nodemon": "^3.0.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }
