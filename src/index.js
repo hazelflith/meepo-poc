@@ -75,6 +75,13 @@ app.post('/api/generate-image', async (req, res) => {
   try {
     const { prompt, size = "1024x1024", n = 1, quality = "high", transparent = false, reference_images = [] } = req.body;
     
+    if (!prompt) {
+      return res.status(400).json({
+        error: "Missing required parameter",
+        details: "Prompt is required"
+      });
+    }
+
     // Validate quality parameter
     if (!["low", "medium", "high"].includes(quality)) {
       return res.status(400).json({
@@ -102,34 +109,44 @@ app.post('/api/generate-image', async (req, res) => {
     console.log('Transparent:', transparent);
     console.log('Number of reference images:', reference_images.length);
 
-    const response = await openai.images.generate({
-      model: "gpt-image-1",
-      prompt: prompt,
-      n: n,
-      size: size,
-      quality: quality,
-      ...(transparent && { background: "transparent" }),
-      ...(reference_images.length > 0 && { images: reference_images })
-    });
+    try {
+      const response = await openai.images.generate({
+        model: "gpt-image-1",
+        prompt: prompt,
+        n: n,
+        size: size,
+        quality: quality,
+        ...(transparent && { background: "transparent" }),
+        ...(reference_images.length > 0 && { images: reference_images })
+      });
 
-    console.log('OpenAI Response:', JSON.stringify(response, null, 2));
+      console.log('OpenAI Response:', JSON.stringify(response, null, 2));
 
-    if (!response.data || response.data.length === 0) {
-      throw new Error('No image data in response');
-    }
-
-    const images = response.data.map(item => {
-      if (!item.b64_json) {
-        throw new Error('Missing b64_json in response data');
+      if (!response.data || response.data.length === 0) {
+        throw new Error('No image data in response');
       }
-      return `data:image/png;base64,${item.b64_json}`;
-    });
 
-    // Return only the base64 images without saving to disk
-    res.json({ images });
+      const images = response.data.map(item => {
+        if (!item.b64_json) {
+          throw new Error('Missing b64_json in response data');
+        }
+        return `data:image/png;base64,${item.b64_json}`;
+      });
+
+      // Return only the base64 images without saving to disk
+      return res.json({ images });
+    } catch (openaiError) {
+      console.error('OpenAI API Error:', openaiError);
+      return res.status(500).json({
+        error: "OpenAI API Error",
+        details: openaiError.message,
+        type: openaiError.type,
+        code: openaiError.code
+      });
+    }
   } catch (error) {
     console.error('Error in image generation:', error);
-    res.status(500).json({ 
+    return res.status(500).json({ 
       error: "Failed to generate image",
       details: error.message,
       type: error.type,
