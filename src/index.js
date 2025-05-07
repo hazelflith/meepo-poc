@@ -73,18 +73,29 @@ app.post('/api/chat', async (req, res) => {
 // Image generation endpoint
 app.post('/api/generate-image', async (req, res) => {
   try {
-    const { prompt, size = "1024x1024", n = 1 } = req.body;
+    const { prompt, size = "1024x1024", n = 1, quality = "high", transparent = false } = req.body;
+    
+    // Validate quality parameter
+    if (!["low", "medium", "high"].includes(quality)) {
+      return res.status(400).json({
+        error: "Invalid quality parameter",
+        details: "Quality must be one of: low, medium, high"
+      });
+    }
     
     console.log('Generating image with prompt:', prompt);
     console.log('Size:', size);
     console.log('Number of images:', n);
+    console.log('Quality:', quality);
+    console.log('Transparent:', transparent);
 
     const response = await openai.images.generate({
       model: "gpt-image-1",
       prompt: prompt,
       n: n,
       size: size,
-      quality: "high",
+      quality: quality,
+      ...(transparent && { background: "transparent" })
     });
 
     console.log('OpenAI Response:', JSON.stringify(response, null, 2));
